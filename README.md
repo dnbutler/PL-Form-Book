@@ -1,26 +1,20 @@
-# Premier League Form Book V1
+# Premier League Form Book
 
-Merged starter bundle including:
-- initial app scaffold
-- prediction scoring engine
-- prediction persistence hooks
-- fixture detail page
-- focus-team preference route and UI
-- results ingest and evaluation writer
+A Next.js + Supabase app for:
+- building pre-match team input snapshots
+- generating 1X2 predictions for scheduled fixtures
+- storing factor scores
+- reviewing completed fixtures with evaluation metrics
 
-## Run locally
+## Stack
+
+- Next.js 15
+- React 19
+- Supabase
+- TypeScript
+
+## Local setup
 
 ```bash
 npm install
 cp .env.example .env.local
-npm run dev
-```
-
-If Supabase env vars are missing, the app falls back to demo data for browsing the UI.
-
-## Next steps
-
-1. Run the SQL files in `sql/`.
-2. Configure `.env.local` with Supabase values.
-3. Add real fixture/result ingestion.
-4. Build `team_match_inputs` snapshots before prediction generation.
