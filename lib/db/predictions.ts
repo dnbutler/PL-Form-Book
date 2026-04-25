@@ -15,6 +15,10 @@ export async function savePrediction(params: { fixtureId: string; modelVersion: 
     ...output.away.factors.map((factor) => ({ prediction_id: predictionId, team_id: awayTeamId, factor_key: factor.factorKey, factor_name: factor.factorName, factor_score: factor.score, factor_weight: factor.weight, weighted_contribution: factor.weightedContribution }))
   ];
   const { error: insertFactorError } = await db.from("prediction_factor_scores").insert(factorRows);
-  if (insertFactorError) throw new Error(`Could not save factor scores for prediction ${predictionId}`);
+  if (insertFactorError) {
+  throw new Error(
+    `Could not save factor scores for prediction ${predictionId}: ${insertFactorError.message}`
+  );
+}
   return predictionId;
 }
