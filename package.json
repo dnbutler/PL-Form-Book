@@ -2,12 +2,17 @@
   "name": "premier-league-form-book-v1",
   "version": "0.2.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
+ "scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "seed:dev": "dotenv -e .env.local -- tsx scripts/seed-dev.ts",
+  "slate:run": "curl -X POST http://localhost:3000/api/slate/run",
+  "inputs:completed:sample": "curl -X POST http://localhost:3000/api/inputs/build -H \"Content-Type: application/json\" -d '{\"fixtureIds\":[\"6d22f3dc-cae5-49ac-8229-8e93e553dd1a\",\"827932c0-8f0f-409d-a7e4-07a3b0cbec86\",\"a56ee21d-a48a-4881-8847-e9809ab11550\"]}'",
+  "predict:completed:sample": "curl -X POST http://localhost:3000/api/predictions/generate -H \"Content-Type: application/json\" -d '{\"fixtureIds\":[\"6d22f3dc-cae5-49ac-8229-8e93e553dd1a\",\"827932c0-8f0f-409d-a7e4-07a3b0cbec86\",\"a56ee21d-a48a-4881-8847-e9809ab11550\"]}'",
+  "evaluate:completed:sample": "curl -X POST http://localhost:3000/api/results/ingest -H \"Content-Type: application/json\" -d '{\"results\":[{\"fixtureId\":\"6d22f3dc-cae5-49ac-8229-8e93e553dd1a\",\"actualHomeGoals\":1,\"actualAwayGoals\":2},{\"fixtureId\":\"827932c0-8f0f-409d-a7e4-07a3b0cbec86\",\"actualHomeGoals\":2,\"actualAwayGoals\":0},{\"fixtureId\":\"a56ee21d-a48a-4881-8847-e9809ab11550\",\"actualHomeGoals\":1,\"actualAwayGoals\":1}]}'"
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
     "next": "15.3.8",
@@ -17,8 +22,10 @@
   "devDependencies": {
     "@types/node": "^22.15.29",
     "@types/react": "^19.1.6",
+    "dotenv-cli": "^7.4.4",
     "eslint": "^9.27.0",
     "eslint-config-next": "15.3.8",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }
 }
