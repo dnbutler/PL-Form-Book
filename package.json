@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed:dev": "dotenv -e .env.local -- tsx scripts/seed-dev.ts",
+    "fixtures:sync": "curl -X POST http://localhost:3000/api/fixtures/sync",
     "slate:run": "curl -X POST http://localhost:3000/api/slate/run",
     "inputs:completed:sample": "curl -X POST http://localhost:3000/api/inputs/build -H \"Content-Type: application/json\" -d '{\"fixtureIds\":[\"6d22f3dc-cae5-49ac-8229-8e93e553dd1a\",\"827932c0-8f0f-409d-a7e4-07a3b0cbec86\",\"a56ee21d-a48a-4881-8847-e9809ab11550\"]}'",
     "predict:completed:sample": "curl -X POST http://localhost:3000/api/predictions/generate -H \"Content-Type: application/json\" -d '{\"fixtureIds\":[\"6d22f3dc-cae5-49ac-8229-8e93e553dd1a\",\"827932c0-8f0f-409d-a7e4-07a3b0cbec86\",\"a56ee21d-a48a-4881-8847-e9809ab11550\"]}'",
