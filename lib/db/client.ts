@@ -9,5 +9,8 @@ export function getDb() {
   if (!supabaseUrl || !serviceRole) {
     throw new Error("Supabase environment variables are not configured");
   }
-  return createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
+
+  return createClient(supabaseUrl, serviceRole, {
+    auth: { persistSession: false },
+  });
 }
