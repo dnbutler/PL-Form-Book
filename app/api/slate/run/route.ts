@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdminRunToken } from "@/lib/server/admin-auth";
 import { getDb } from "@/lib/db/client";
 import { buildTeamMatchInputsForFixture } from "@/lib/domain/inputs/build-team-match-inputs";
 import { getActiveModelVersion, getFixtureH2H, getFixtureInputs } from "@/lib/db/queries";
@@ -6,7 +7,10 @@ import { getFixtureDetail } from "@/lib/db/fixtures";
 import { savePrediction } from "@/lib/db/predictions";
 import { scoreFixture } from "@/lib/domain/scoring/score-fixture";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const unauthorized = requireAdminRunToken(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const db = getDb();
 

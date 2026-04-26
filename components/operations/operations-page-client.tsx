@@ -15,9 +15,15 @@ export function OperationsPageClient() {
   const [state, setState] = useState<RunState>("idle");
   const [message, setMessage] = useState<string>("No operation has been run yet.");
   const [results, setResults] = useState<OperationResult[]>([]);
+  const [adminToken, setAdminToken] = useState<string>("");
 
   async function postJson(name: string, url: string): Promise<OperationResult> {
-    const response = await fetch(url, { method: "POST" });
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "x-admin-run-token": adminToken,
+      },
+    });
     const text = await response.text();
 
     let body: unknown = text;
@@ -36,6 +42,12 @@ export function OperationsPageClient() {
   }
 
   async function runOperation(kind: "fixtures" | "slate" | "weekly") {
+    if (!adminToken.trim()) {
+      setState("error");
+      setMessage("Enter the admin run token before running an operation.");
+      return;
+    }
+
     setState("running");
     setResults([]);
     setMessage(
@@ -98,6 +110,18 @@ export function OperationsPageClient() {
           <h2 className="metric" style={{ fontSize: "2rem" }}>Admin run controls</h2>
           <div className="muted">Trigger fixture sync and slate prediction workflows from the browser.</div>
         </div>
+      </section>
+
+      <section className="card">
+        <h2 style={{ marginTop: 0 }}>Admin token</h2>
+        <p className="muted">Enter the local admin run token. It is sent as an <code>x-admin-run-token</code> header.</p>
+        <input
+          className="input"
+          type="password"
+          value={adminToken}
+          onChange={(event) => setAdminToken(event.target.value)}
+          placeholder="ADMIN_RUN_TOKEN"
+        />
       </section>
 
       <section className="grid grid-3">

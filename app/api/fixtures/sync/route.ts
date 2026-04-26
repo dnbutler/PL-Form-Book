@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdminRunToken } from "@/lib/server/admin-auth";
 import { getDb } from "@/lib/db/client";
 
 const FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4";
@@ -118,7 +119,10 @@ async function upsertTeam(team: FootballDataTeam) {
   return data.id as string;
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const unauthorized = requireAdminRunToken(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const token = process.env.FOOTBALL_DATA_API_TOKEN;
 
