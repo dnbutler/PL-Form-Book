@@ -12,6 +12,7 @@ const nav = [
   ["/fixtures", "Fixtures"],
   ["/results", "Results"],
   ["/model", "Model"],
+  ["/operations", "Operations"],
 ] as const;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
