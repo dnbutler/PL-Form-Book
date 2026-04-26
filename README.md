@@ -28,13 +28,13 @@ The app expects the local Next.js server to be running before calling the operat
 npm run dev
 ```
 
-In a separate terminal, run the weekly pipeline:
+In a separate terminal, run the weekly pipeline with the admin run token:
 
 ```bash
-npm run weekly:run
+ADMIN_RUN_TOKEN=local-admin-run-token npm run weekly:run
 ```
 
-This runs fixture sync first, then builds slate inputs and predictions for scheduled fixtures:
+This runs fixture sync first, then builds slate inputs and predictions for scheduled fixtures. The individual scripts also require `ADMIN_RUN_TOKEN` because the admin endpoints are protected:
 
 ```bash
 npm run fixtures:sync && npm run slate:run
@@ -46,4 +46,5 @@ Required local environment variables:
 NEXT_PUBLIC_SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 FOOTBALL_DATA_API_TOKEN
+ADMIN_RUN_TOKEN
 ```
