@@ -6,6 +6,7 @@ const FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4";
 const COMPETITION_CODE = "PL";
 const DEFAULT_WINDOW = 5;
 const MAX_RANGE_DAYS = 5;
+const DEFAULT_HORIZON_DAYS = 21;
 
 type TrendSide = "home" | "away";
 
@@ -55,8 +56,17 @@ type FootballDataTrend = {
   };
 };
 
+type DateChunk = {
+  dateFrom: string;
+  dateTo: string;
+};
+
 function toDateString(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+function parseDate(date: string) {
+  return new Date(`${date}T00:00:00Z`);
 }
 
 function addDays(date: Date, days: number) {
@@ -65,31 +75,47 @@ function addDays(date: Date, days: number) {
   return next;
 }
 
-function normaliseDateRange(request: NextRequest) {
+function buildDateChunks(request: NextRequest): {
+  dateFrom: string;
+  dateTo: string;
+  chunks: DateChunk[];
+  explicitRange: boolean;
+} {
   const url = new URL(request.url);
   const dateFromParam = url.searchParams.get("dateFrom");
   const dateToParam = url.searchParams.get("dateTo");
 
   const today = new Date();
   const dateFrom = dateFromParam ?? toDateString(today);
-  const requestedDateTo = dateToParam ?? toDateString(addDays(today, MAX_RANGE_DAYS));
+  const dateTo = dateToParam ?? toDateString(addDays(today, DEFAULT_HORIZON_DAYS));
 
-  const from = new Date(`${dateFrom}T00:00:00Z`);
-  const to = new Date(`${requestedDateTo}T00:00:00Z`);
-  const maxTo = addDays(from, MAX_RANGE_DAYS);
+  const start = parseDate(dateFrom);
+  const end = parseDate(dateTo);
 
-  if (to > maxTo) {
-    return {
-      dateFrom,
-      dateTo: toDateString(maxTo),
-      truncated: true,
-    };
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    throw new Error("Invalid date range");
+  }
+
+  const chunks: DateChunk[] = [];
+  let cursor = start;
+
+  while (cursor < end) {
+    const chunkEnd = addDays(cursor, MAX_RANGE_DAYS);
+    const boundedEnd = chunkEnd < end ? chunkEnd : end;
+
+    chunks.push({
+      dateFrom: toDateString(cursor),
+      dateTo: toDateString(boundedEnd),
+    });
+
+    cursor = boundedEnd;
   }
 
   return {
     dateFrom,
-    dateTo: requestedDateTo,
-    truncated: false,
+    dateTo,
+    chunks,
+    explicitRange: Boolean(dateFromParam || dateToParam),
   };
 }
 
@@ -155,6 +181,37 @@ function trendRow({
   };
 }
 
+async function fetchTrendChunk({
+  token,
+  dateFrom,
+  dateTo,
+}: {
+  token: string;
+  dateFrom: string;
+  dateTo: string;
+}) {
+  const url = `${FOOTBALL_DATA_BASE_URL}/trends/?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${COMPETITION_CODE}&window=${DEFAULT_WINDOW}&consider_side`;
+
+  const response = await fetch(url, {
+    headers: {
+      "X-Auth-Token": token,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`football-data trends request failed ${response.status} for ${dateFrom} to ${dateTo}: ${text}`);
+  }
+
+  const payload = await response.json();
+
+  return {
+    meta: payload.meta,
+    trends: (payload.trends ?? []) as FootballDataTrend[],
+  };
+}
+
 export async function POST(request: NextRequest) {
   const unauthorized = requireAdminRunToken(request);
   if (unauthorized) return unauthorized;
@@ -169,108 +226,110 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { dateFrom, dateTo, truncated } = normaliseDateRange(request);
-    const url = `${FOOTBALL_DATA_BASE_URL}/trends/?dateFrom=${dateFrom}&dateTo=${dateTo}&competitions=${COMPETITION_CODE}&window=${DEFAULT_WINDOW}&consider_side`;
-
-    const response = await fetch(url, {
-      headers: {
-        "X-Auth-Token": token,
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`football-data trends request failed ${response.status}: ${text}`);
-    }
-
-    const payload = await response.json();
-    const trends = (payload.trends ?? []) as FootballDataTrend[];
+    const { dateFrom, dateTo, chunks, explicitRange } = buildDateChunks(request);
 
     const db = getDb();
     const outputs = [];
+    const chunkSummaries = [];
+    let returnedMatches = 0;
     let upsertedTrendRows = 0;
     let skippedMatches = 0;
 
-    for (const trendMatch of trends) {
-      const externalMatchId = String(trendMatch.id);
-      const homeExternalTeamId = String(trendMatch.homeTeam.id);
-      const awayExternalTeamId = String(trendMatch.awayTeam.id);
+    for (const chunk of chunks) {
+      const { meta, trends } = await fetchTrendChunk({
+        token,
+        dateFrom: chunk.dateFrom,
+        dateTo: chunk.dateTo,
+      });
 
-      const { data: fixture, error: fixtureError } = await db
-        .from("fixtures")
-        .select("id")
-        .eq("external_id", externalMatchId)
-        .maybeSingle();
+      returnedMatches += trends.length;
+      chunkSummaries.push({
+        ...chunk,
+        returnedMatches: trends.length,
+        resultSet: meta?.result_set ?? null,
+      });
 
-      if (fixtureError) {
-        throw new Error(`Could not look up fixture ${externalMatchId}: ${fixtureError.message}`);
-      }
+      for (const trendMatch of trends) {
+        const externalMatchId = String(trendMatch.id);
+        const homeExternalTeamId = String(trendMatch.homeTeam.id);
+        const awayExternalTeamId = String(trendMatch.awayTeam.id);
 
-      const { data: teams, error: teamsError } = await db
-        .from("teams")
-        .select("id, external_id")
-        .in("external_id", [homeExternalTeamId, awayExternalTeamId]);
+        const { data: fixture, error: fixtureError } = await db
+          .from("fixtures")
+          .select("id")
+          .eq("external_id", externalMatchId)
+          .maybeSingle();
 
-      if (teamsError) {
-        throw new Error(`Could not look up teams for fixture ${externalMatchId}: ${teamsError.message}`);
-      }
+        if (fixtureError) {
+          throw new Error(`Could not look up fixture ${externalMatchId}: ${fixtureError.message}`);
+        }
 
-      const homeTeam = (teams ?? []).find((team) => team.external_id === homeExternalTeamId);
-      const awayTeam = (teams ?? []).find((team) => team.external_id === awayExternalTeamId);
+        const { data: teams, error: teamsError } = await db
+          .from("teams")
+          .select("id, external_id")
+          .in("external_id", [homeExternalTeamId, awayExternalTeamId]);
 
-      if (!fixture?.id || !homeTeam?.id || !awayTeam?.id) {
-        skippedMatches += 1;
+        if (teamsError) {
+          throw new Error(`Could not look up teams for fixture ${externalMatchId}: ${teamsError.message}`);
+        }
+
+        const homeTeam = (teams ?? []).find((team) => team.external_id === homeExternalTeamId);
+        const awayTeam = (teams ?? []).find((team) => team.external_id === awayExternalTeamId);
+
+        if (!fixture?.id || !homeTeam?.id || !awayTeam?.id) {
+          skippedMatches += 1;
+          outputs.push({
+            externalMatchId,
+            status: "skipped",
+            reason: "Fixture or synced teams not found locally",
+          });
+          continue;
+        }
+
+        const rows = [
+          trendRow({
+            fixtureId: fixture.id,
+            teamId: homeTeam.id,
+            externalMatchId,
+            externalTeamId: homeExternalTeamId,
+            side: "home",
+            trendWindow: DEFAULT_WINDOW,
+            considerSide: true,
+            trend: trendMatch.trend.home,
+          }),
+          trendRow({
+            fixtureId: fixture.id,
+            teamId: awayTeam.id,
+            externalMatchId,
+            externalTeamId: awayExternalTeamId,
+            side: "away",
+            trendWindow: DEFAULT_WINDOW,
+            considerSide: true,
+            trend: trendMatch.trend.away,
+          }),
+        ];
+
+        const { error: upsertError } = await db
+          .from("fixture_team_trends")
+          .upsert(rows, {
+            onConflict: "fixture_id,team_id,side,trend_window,consider_side",
+          });
+
+        if (upsertError) {
+          throw new Error(`Could not upsert trends for fixture ${externalMatchId}: ${upsertError.message}`);
+        }
+
+        upsertedTrendRows += rows.length;
         outputs.push({
           externalMatchId,
-          status: "skipped",
-          reason: "Fixture or synced teams not found locally",
-        });
-        continue;
-      }
-
-      const rows = [
-        trendRow({
           fixtureId: fixture.id,
-          teamId: homeTeam.id,
-          externalMatchId,
-          externalTeamId: homeExternalTeamId,
-          side: "home",
-          trendWindow: DEFAULT_WINDOW,
-          considerSide: true,
-          trend: trendMatch.trend.home,
-        }),
-        trendRow({
-          fixtureId: fixture.id,
-          teamId: awayTeam.id,
-          externalMatchId,
-          externalTeamId: awayExternalTeamId,
-          side: "away",
-          trendWindow: DEFAULT_WINDOW,
-          considerSide: true,
-          trend: trendMatch.trend.away,
-        }),
-      ];
-
-      const { error: upsertError } = await db
-        .from("fixture_team_trends")
-        .upsert(rows, {
-          onConflict: "fixture_id,team_id,side,trend_window,consider_side",
+          homeTeam: trendMatch.homeTeam.name,
+          awayTeam: trendMatch.awayTeam.name,
+          status: "synced",
+          rows: rows.length,
+          chunk: `${chunk.dateFrom}/${chunk.dateTo}`,
         });
-
-      if (upsertError) {
-        throw new Error(`Could not upsert trends for fixture ${externalMatchId}: ${upsertError.message}`);
       }
-
-      upsertedTrendRows += rows.length;
-      outputs.push({
-        externalMatchId,
-        fixtureId: fixture.id,
-        homeTeam: trendMatch.homeTeam.name,
-        awayTeam: trendMatch.awayTeam.name,
-        status: "synced",
-        rows: rows.length,
-      });
     }
 
     return NextResponse.json({
@@ -278,10 +337,11 @@ export async function POST(request: NextRequest) {
       competition: COMPETITION_CODE,
       dateFrom,
       dateTo,
-      truncated,
+      explicitRange,
+      chunks: chunkSummaries,
       trendWindow: DEFAULT_WINDOW,
       considerSide: true,
-      returnedMatches: trends.length,
+      returnedMatches,
       upsertedTrendRows,
       skippedMatches,
       outputs,
