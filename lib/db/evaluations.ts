@@ -7,8 +7,8 @@ export type ReviewedFixtureItem = {
   fixtureId: string;
   kickoffAt: string | null;
   gameweek: number | null;
-  homeTeam: { id: string; name: string; shortName: string | null; code: string | null };
-  awayTeam: { id: string; name: string; shortName: string | null; code: string | null };
+  homeTeam: { id: string; name: string; shortName: string | null; code: string | null; crestUrl?: string | null };
+  awayTeam: { id: string; name: string; shortName: string | null; code: string | null; crestUrl?: string | null };
   prediction: {
     predictionId: string;
     modelVersion: string | null;
@@ -127,8 +127,8 @@ export async function listReviewedFixtures(limit = 100): Promise<ReviewedFixture
         id,
         kickoff_at,
         gameweek,
-        home_team:teams!fixtures_home_team_id_fkey(id,name,short_name,code),
-        away_team:teams!fixtures_away_team_id_fkey(id,name,short_name,code)
+        home_team:teams!fixtures_home_team_id_fkey(id,name,short_name,code,crest_url),
+        away_team:teams!fixtures_away_team_id_fkey(id,name,short_name,code,crest_url)
       )
     `)
     .order("evaluated_at", { ascending: false })
@@ -154,12 +154,14 @@ export async function listReviewedFixtures(limit = 100): Promise<ReviewedFixture
         name: homeTeam?.name,
         shortName: homeTeam?.short_name ?? null,
         code: homeTeam?.code ?? null,
+        crestUrl: homeTeam?.crest_url ?? null,
       },
       awayTeam: {
         id: awayTeam?.id,
         name: awayTeam?.name,
         shortName: awayTeam?.short_name ?? null,
         code: awayTeam?.code ?? null,
+        crestUrl: awayTeam?.crest_url ?? null,
       },
       prediction: {
         predictionId: prediction?.id,

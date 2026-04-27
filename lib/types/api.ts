@@ -5,8 +5,8 @@ export interface FixtureListItem {
   kickoffAt: string;
   gameweek: number | null;
   status: string;
-  homeTeam: { id: string; name: string; shortName: string };
-  awayTeam: { id: string; name: string; shortName: string };
+  homeTeam: { id: string; name: string; shortName: string; crestUrl?: string | null };
+  awayTeam: { id: string; name: string; shortName: string; crestUrl?: string | null };
   prediction: null | {
     predictionId: string;
     modelVersion: string;

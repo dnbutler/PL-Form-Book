@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { FixtureListItem, UserPreferencesResponse } from "@/lib/types/api";
 import { FocusTeamSelect } from "@/components/shared/focus-team-select";
+import { ClubBadge } from "@/components/shared/club-badge";
 
 interface TeamOption { id: string; name: string; }
 
@@ -36,7 +37,13 @@ export function FixturesPageClient({ fixtures, teams, preferences }: { fixtures:
             return (
               <Link key={fixture.fixtureId} href={`/fixtures/${fixture.fixtureId}`} className={`row ${isFocus ? 'row-focus' : ''}`}>
                 <div>
-                  <div>{fixture.homeTeam.name} vs {fixture.awayTeam.name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <ClubBadge name={fixture.homeTeam.name} shortName={fixture.homeTeam.shortName} crestUrl={fixture.homeTeam.crestUrl} />
+                    <span>{fixture.homeTeam.name}</span>
+                    <span className="muted">vs</span>
+                    <ClubBadge name={fixture.awayTeam.name} shortName={fixture.awayTeam.shortName} crestUrl={fixture.awayTeam.crestUrl} />
+                    <span>{fixture.awayTeam.name}</span>
+                  </div>
                   <div className="muted">{new Date(fixture.kickoffAt).toLocaleString()} · GW {fixture.gameweek ?? '—'}</div>
                 </div>
                 <div className="badge">{fixture.prediction ? fixture.prediction.verdict : 'No prediction yet'}</div>

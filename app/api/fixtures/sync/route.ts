@@ -10,6 +10,7 @@ type FootballDataTeam = {
   name: string;
   shortName?: string | null;
   tla?: string | null;
+  crest?: string | null;
 };
 
 type FootballDataMatch = {
@@ -40,6 +41,7 @@ async function upsertTeam(team: FootballDataTeam) {
   const externalId = String(team.id);
   const code = team.tla ?? externalId;
   const shortName = team.shortName ?? team.tla ?? team.name;
+  const crestUrl = team.crest ?? null;
 
   const { data: existingByExternalId, error: externalLookupError } = await db
     .from("teams")
@@ -60,6 +62,7 @@ async function upsertTeam(team: FootballDataTeam) {
         name: team.name,
         short_name: shortName,
         code,
+        crest_url: crestUrl,
       })
       .eq("id", existingByExternalId.id)
       .select("id")
@@ -89,6 +92,7 @@ async function upsertTeam(team: FootballDataTeam) {
         external_id: externalId,
         name: team.name,
         short_name: shortName,
+        crest_url: crestUrl,
       })
       .eq("id", existingByCode.id)
       .select("id")
@@ -108,6 +112,7 @@ async function upsertTeam(team: FootballDataTeam) {
       name: team.name,
       short_name: shortName,
       code,
+      crest_url: crestUrl,
     })
     .select("id")
     .single();

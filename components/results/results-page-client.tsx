@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReviewedFixtureItem } from "@/lib/db/evaluations";
+import { ClubBadge } from "@/components/shared/club-badge";
 
 export function ResultsPageClient({ fixtures }: { fixtures: ReviewedFixtureItem[] }) {
   return (
@@ -21,7 +22,13 @@ export function ResultsPageClient({ fixtures }: { fixtures: ReviewedFixtureItem[
             fixtures.map((fixture) => (
               <div key={fixture.fixtureId} className="row" style={{ alignItems: "flex-start" }}>
                 <div>
-                  <div>{fixture.homeTeam.name} vs {fixture.awayTeam.name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <ClubBadge name={fixture.homeTeam.name} shortName={fixture.homeTeam.shortName} crestUrl={fixture.homeTeam.crestUrl} />
+                    <span>{fixture.homeTeam.name}</span>
+                    <span className="muted">vs</span>
+                    <ClubBadge name={fixture.awayTeam.name} shortName={fixture.awayTeam.shortName} crestUrl={fixture.awayTeam.crestUrl} />
+                    <span>{fixture.awayTeam.name}</span>
+                  </div>
                   <div className="muted">
                     Prediction: {fixture.prediction.verdict ?? "No prediction"}
                     {fixture.prediction.confidence ? ` · ${fixture.prediction.confidence}` : ""}

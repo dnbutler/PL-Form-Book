@@ -15,7 +15,7 @@ export async function listFixtures(params?: { status?: string; gameweek?: number
   const db = getDb();
   const query = db.from("v_fixture_predictions").select(`
       fixture_id, kickoff_at, gameweek, status,
-      home_team_id, away_team_id, home_team, home_team_short, away_team, away_team_short,
+      home_team_id, away_team_id, home_team, home_team_short, home_team_crest_url, away_team, away_team_short, away_team_crest_url,
       prediction_id, version_key, home_prob, draw_prob, away_prob, verdict, confidence, rationale,
       actual_home_goals, actual_away_goals, actual_result, correct_1x2, self_mark
     `).order("kickoff_at", { ascending: true });
@@ -68,8 +68,8 @@ function mapFixturePredictionRow(row: any): FixtureListItem {
     kickoffAt: row.kickoff_at,
     gameweek: row.gameweek,
     status: row.status,
-    homeTeam: { id: row.home_team_id, name: row.home_team, shortName: row.home_team_short },
-    awayTeam: { id: row.away_team_id, name: row.away_team, shortName: row.away_team_short },
+    homeTeam: { id: row.home_team_id, name: row.home_team, shortName: row.home_team_short, crestUrl: row.home_team_crest_url },
+    awayTeam: { id: row.away_team_id, name: row.away_team, shortName: row.away_team_short, crestUrl: row.away_team_crest_url },
     prediction: row.prediction_id ? { predictionId: row.prediction_id, modelVersion: row.version_key, homeProb: Number(row.home_prob), drawProb: Number(row.draw_prob), awayProb: Number(row.away_prob), verdict: row.verdict, confidence: row.confidence, rationale: row.rationale } : null,
     evaluation: row.prediction_id ? { actualHomeGoals: row.actual_home_goals, actualAwayGoals: row.actual_away_goals, actualResult: row.actual_result, correct1x2: row.correct_1x2, selfMark: row.self_mark } : null,
   };

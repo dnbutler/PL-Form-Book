@@ -5,7 +5,8 @@ create table if not exists teams (
   id uuid primary key default gen_random_uuid(),
   code text not null unique,
   name text not null,
-  short_name text not null
+  short_name text not null,
+  crest_url text
 );
 
 create table if not exists fixtures (
@@ -104,8 +105,10 @@ select
   f.away_team_id,
   ht.name as home_team,
   ht.short_name as home_team_short,
+  ht.crest_url as home_team_crest_url,
   at.name as away_team,
   at.short_name as away_team_short,
+  at.crest_url as away_team_crest_url,
   p.id as prediction_id,
   mv.version_key,
   p.home_prob,
